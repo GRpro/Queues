@@ -6,8 +6,10 @@ import lombok.ToString;
 import lombok.extern.java.Log;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 
@@ -19,24 +21,27 @@ import java.util.logging.Level;
 public class Runner {
 
   static {
-    ConsoleHandler handler = new ConsoleHandler();
-    handler.setLevel(Level.FINE);
-    log.setLevel(Level.FINE);
-    log.addHandler(handler);
+//    ConsoleHandler handler = new ConsoleHandler();
+//    handler.setLevel(Level.FINE);
+//    log.addHandler(handler);
+    log.setLevel(Level.INFO);
+
   }
 
 
   private BlockingQueue<Task> queue;
+  private CountDownLatch fifoStopIndicator;
   private Thread consumer;
   private Thread producer;
   private ThreadGroup group;
 
   @Getter
-  private Metric metric;
+  private final Metric metric;
 
 
   public Runner() {
     queue = new LinkedBlockingQueue<>();
+    fifoStopIndicator = new CountDownLatch(2);
     group = new ThreadGroup("FIFO");
     producer = new Producer(group, "Producer");
     consumer = new Consumer(group, "Consumer");
@@ -50,14 +55,42 @@ public class Runner {
 
   public void stop() {
     group.interrupt();
+    try {
+      fifoStopIndicator.await();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
-
 
   @ToString
   private class Metric {
-    AtomicInteger avgQueueLen;
-    AtomicInteger avgTaskTimeInQueue;
-    AtomicInteger avgTaskSysTime;
+
+    int avgQueueLen = 0;
+    @Setter long procStartTime = 0;
+    @Setter long procEndTime = 0;
+
+    long drafeTime = 0;
+
+    private long lastModificationLen = System.currentTimeMillis();
+
+    public synchronized void sayQueueLen(int len) {
+      long curTime = System.currentTimeMillis();
+      avgQueueLen += len * (curTime - lastModificationLen);
+//      System.out.println("Len: " + len + " delta: " + (curTime - lastModificationLen));
+      lastModificationLen = curTime;
+    }
+
+    public void addDrafeTime(long time) {
+      drafeTime += time;
+    }
+
+    public double getAvgQueueLen() {
+      return (double) avgQueueLen / (procEndTime - procStartTime);
+    }
+
+    public double getDrafeTime() {
+      return (double) drafeTime / (procEndTime - procStartTime);
+    }
   }
 
   private class Producer extends Thread {
@@ -72,12 +105,14 @@ public class Runner {
         while (!isInterrupted()) {
           Task task = new Task(Util.genProcTime());
           queue.put(task);
+          metric.sayQueueLen(queue.size());
           log.finer("Produced task: " + task);
           Thread.sleep(Util.genTaskDelay());
         }
       } catch (InterruptedException e) {
         // do nothing
       } finally {
+        fifoStopIndicator.countDown();
         log.fine("Producer interrupted");
       }
     }
@@ -91,16 +126,23 @@ public class Runner {
     @Override
     public void run() {
       log.fine("Consumer started");
+      metric.setProcStartTime(System.currentTimeMillis());
       try {
         while (!isInterrupted()) {
+          long t1 = System.currentTimeMillis();
           Task task = queue.take();
+          long t2 = System.currentTimeMillis();
+          metric.addDrafeTime(t2 - t1);
+          metric.sayQueueLen(queue.size());
           log.finer("Consumed task: " + task);
-          Thread.sleep(Util.genProcTime());
+          Thread.sleep(task.getWeight());
         }
       } catch (InterruptedException e) {
         // do nothing
       } finally {
+        metric.setProcEndTime(System.currentTimeMillis());
         log.fine("Consumer interrupted");
+        fifoStopIndicator.countDown();
       }
     }
   }
@@ -130,7 +172,10 @@ public class Runner {
     }
     runner.stop();
 
-    log.info(runner.getMetric().toString());
+    Metric m = runner.getMetric();
+//    log.info(m.toString());
+    log.info("Avg queue length: " + m.getAvgQueueLen());
+    log.info("Avg proc drafe time: " + m.getDrafeTime());
   }
 }
 

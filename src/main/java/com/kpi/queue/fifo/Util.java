@@ -6,10 +6,10 @@ import java.util.Random;
  *
  */
 public class Util {
-  public static final int MAX_TASK_PROC_TIME = 600;
-  public static final int MIN_TASK_PROC_TIME = 600;
-  public static final int MAX_TASK_DELAY = 500;
-  public static final int MIN_TASK_DELAY = 500;
+  public static final int MAX_TASK_PROC_TIME = 80;
+  public static final int MIN_TASK_PROC_TIME = 50;
+  public static final int MAX_TASK_DELAY = 110;
+  public static final int MIN_TASK_DELAY = 40;
 
   private static final Random random = new Random();
 
