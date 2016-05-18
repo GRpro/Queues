@@ -11,7 +11,7 @@ public class Queue implements ActionListener {
 
     public Queue(String name) {
         this.name = name;
-        queue = new PriorityQueue<>(10, new TaskPriorityComparator());
+//        queue = new PriorityQueue<>(10, new TaskPriorityComparator());
     }
 
     public synchronized void addTask(Task task) {
@@ -39,9 +39,9 @@ public class Queue implements ActionListener {
         synchronized (this) {
             Iterator<Task> it = queue.iterator();
             while (it.hasNext()) {
-                Task current = it.next();
-                if (current.getPriority() < Generator.MAX_TASK_PRIORITY)
-                    current.setPriority(current.getPriority() + 1);
+//                Task current = it.next();
+//                if (current.getPriority() < Generator.MAX_TASK_PRIORITY)
+//                    current.setPriority(current.getPriority() + 1);
             }
         }
     }
