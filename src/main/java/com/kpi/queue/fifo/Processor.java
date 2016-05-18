@@ -2,8 +2,6 @@ package com.kpi.queue.fifo;
 
 public class Processor implements Runnable {
     private String name;
-    private Queue inputTasksQueue;
-    private Task currentTask;
     private int finishedTasksCounter = 0;
     private long workingTime = 0;
     private long startTime;
@@ -12,9 +10,8 @@ public class Processor implements Runnable {
     private double[] wait = {0, 0, 0, 0, 0};
     private double[] count = {0, 0, 0, 0, 0};
 
-    public Processor(String name, Queue inputQueue) {
+    public Processor(String name) {
         this.name = name;
-        inputTasksQueue = inputQueue;
         startTime = System.currentTimeMillis();
     }
 
@@ -53,6 +50,4 @@ public class Processor implements Runnable {
 //        }
     }
 
-    private void stat(Task task) {
-    }
 }

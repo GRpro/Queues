@@ -7,6 +7,7 @@ import lombok.extern.java.Log;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 
@@ -30,12 +31,16 @@ public class Runner {
   private Thread producer;
   private ThreadGroup group;
 
+  @Getter
+  private Metric metric;
+
 
   public Runner() {
     queue = new LinkedBlockingQueue<>();
     group = new ThreadGroup("FIFO");
     producer = new Producer(group, "Producer");
     consumer = new Consumer(group, "Consumer");
+    metric = new Metric();
   }
 
   public void start() {
@@ -48,9 +53,11 @@ public class Runner {
   }
 
 
+  @ToString
   private class Metric {
-    int avgQueueLen;
-    int avgTimeInQeue;
+    AtomicInteger avgQueueLen;
+    AtomicInteger avgTaskTimeInQueue;
+    AtomicInteger avgTaskSysTime;
   }
 
   private class Producer extends Thread {
@@ -113,6 +120,7 @@ public class Runner {
 
 
   public static void main(String[] args) {
+
     Runner runner = new Runner();
     runner.start();
     try {
@@ -121,6 +129,8 @@ public class Runner {
       e.printStackTrace();
     }
     runner.stop();
+
+    log.info(runner.getMetric().toString());
   }
 }
 
